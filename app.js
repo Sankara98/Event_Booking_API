@@ -1,39 +1,42 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const graphQlHttp = require('express-graphql');
-const mongoose = require('mongoose');
+const express = require("express");
+const bodyParser = require("body-parser");
+const graphQlHttp = require("express-graphql");
+const mongoose = require("mongoose");
+const cors = require("cors");
 
-const graphQLSchema = require('./graphQL/schema');
-const graphQLResolvers = require('./graphQL/resolvers');
-const isAuth = require('./middleware/Authorization')
+const graphQLSchema = require("./graphQL/schema");
+const graphQLResolvers = require("./graphQL/resolvers");
+const isAuth = require("./middleware/Authorization");
 
+const isProduction = process.env.NODE_ENV === "production";
 const app = express();
-
+app.use(cors());
 
 app.use(isAuth);
 app.use(bodyParser.json());
 
-app.use('/graphql', graphQlHttp({
-
-    schema: graphQLSchema, 
+app.use(
+  "/graphql",
+  graphQlHttp({
+    schema: graphQLSchema,
 
     rootValue: graphQLResolvers,
     graphiql: true
+  })
+);
 
-}));
-
-app.get('/', (req, res, next) => {
-    res.send('Hello world');
+app.get("/", (req, res, next) => {
+  res.send("Hello world");
 });
 
+if (isProduction) {
+  mongoose.connect(process.env.MONGODB_URI);
+} else {
+  mongoose.connect("mongodb://localhost/conduit");
+  mongoose.set("debug", true);
+}
 
-mongoose.connect(`
-    mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD
-    }@cluster0-4avtj.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`,
-    ).then( () => {
-        app.listen(3000);
-    })
-    .catch(err => {
-        console.log(process.env.MONGO_USER, process.env.MONGO_PASSWORD)
-        console.log(err)
-    });
+// finally, let's start our server...
+const server = app.listen(process.env.PORT || 3000, function() {
+  console.log("Listening on port " + server.address().port);
+});
